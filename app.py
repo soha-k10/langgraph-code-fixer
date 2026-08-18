@@ -4,7 +4,7 @@ from typing import TypedDict, List, Dict, Any
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, END, START
 
 # Load environment variables
@@ -43,10 +43,14 @@ class BugFixerState(TypedDict):
 # ==========================================
 
 def get_llm():
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError("OpenAI API Key missing! Set it in .env or sidebar.")
-    return ChatOpenAI(model="gpt-4o-mini", temperature=0.0, api_key=api_key)
+        raise ValueError("Gemini API Key missing! Set it in .env or sidebar.")
+    return ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        google_api_key=api_key,
+        temperature=0.0
+    )
 
 
 def test_generator_node(state: BugFixerState) -> Dict[str, Any]:
@@ -159,13 +163,14 @@ def build_graph():
 st.set_page_config(page_title="Autonomous Code Fixer", page_icon="🛠️", layout="wide")
 
 st.title("🛠️ Autonomous Code Tester & Fixer")
-st.caption("Powered by LangGraph, Pydantic, and OpenAI")
+st.caption("Powered by LangGraph, Pydantic, and Google Gemini")
 
 with st.sidebar:
     st.header("🔑 Configuration")
-    user_api_key = st.text_input("OpenAI API Key", type="password", value=os.getenv("OPENAI_API_KEY", ""))
+    user_api_key = st.text_input("Gemini API Key", type="password", value=os.getenv("GEMINI_API_KEY", ""))
     if user_api_key:
-        os.environ["OPENAI_API_KEY"] = user_api_key
+        os.environ["GEMINI_API_KEY"] = user_api_key
+    st.markdown("[Get a Gemini API Key](https://aistudio.google.com/app/apikey)")
 
 default_buggy_code = """def calculate_average(numbers):
     total = sum(numbers)
@@ -184,8 +189,8 @@ with col2:
     status_box = st.empty()
 
 if run_button:
-    if not os.getenv("OPENAI_API_KEY"):
-        st.error("Please provide an OpenAI API Key in the sidebar or .env file.")
+    if not os.getenv("GEMINI_API_KEY"):
+        st.error("Please provide a Gemini API Key in the sidebar or .env file.")
     else:
         app = build_graph()
         initial_state = {
@@ -197,7 +202,7 @@ if run_button:
             "max_attempts": 3
         }
         
-        with st.spinner("Running LangGraph Autonomous Agent Loop..."):
+        with st.spinner("Running LangGraph Autonomous Agent Loop with Gemini..."):
             final_state = app.invoke(initial_state)
             
         if final_state["test_results"].get("passed"):
